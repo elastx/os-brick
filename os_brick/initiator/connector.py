@@ -63,6 +63,7 @@ unix_connector_list = [
     'os_brick.initiator.connectors.vmware.VmdkConnector',
     'os_brick.initiator.connectors.storpool.StorPoolConnector',
     'os_brick.initiator.connectors.nvmeof.NVMeOFConnector',
+    'os_brick.initiator.connectors.lightos.LightOSConnector',
 ]
 
 
@@ -113,6 +114,9 @@ _connector_mapping_linux = {
         'os_brick.initiator.connectors.nvmeof.NVMeOFConnector',
     initiator.NVMEOF:
         'os_brick.initiator.connectors.nvmeof.NVMeOFConnector',
+    initiator.LIGHTOS:
+        'os_brick.initiator.connectors.lightos.LightOSConnector',
+
 }
 
 # Mapping for the S390X platform
