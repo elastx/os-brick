@@ -1234,6 +1234,64 @@ loop0                                     0"""
         self.linuxscsi.multipath_del_path('/dev/sda')
         self.assertEqual(['multipathd del path /dev/sda'], self.cmds)
 
+    @mock.patch.object(linuxscsi.LinuxSCSI, 'get_dm_name', return_value=None)
+    def test_multipath_del_map_not_present(self, name_mock):
+        self.linuxscsi.multipath_del_map('dm-7')
+        self.assertEqual([], self.cmds)
+        name_mock.assert_called_once_with('dm-7')
+
+    @mock.patch.object(linuxscsi.LinuxSCSI, '_execute')
+    @mock.patch.object(linuxscsi.LinuxSCSI, 'get_dm_name', return_value=None)
+    def test_multipath_del_map(self, name_mock, exec_mock):
+        exec_mock.side_effect = [putils.ProcessExecutionError, None]
+
+        mpath_name = '3600d0230000000000e13955cc3757800'
+        name_mock.side_effect = [mpath_name, mpath_name, None]
+        self.linuxscsi.multipath_del_map('dm-7')
+
+        self.assertEqual(2, exec_mock.call_count)
+        exec_mock.assert_has_calls(
+            [mock.call('multipathd', 'del', 'map', mpath_name,
+                       run_as_root=True, timeout=5,
+                       root_helper=self.linuxscsi._root_helper)] * 2)
+        self.assertEqual(3, name_mock.call_count)
+        name_mock.assert_has_calls([mock.call('dm-7')] * 3)
+
+    @mock.patch.object(linuxscsi.LinuxSCSI, '_execute')
+    @mock.patch.object(linuxscsi.LinuxSCSI, 'get_dm_name')
+    def test_multipath_del_map_retries_cmd_fails(self, name_mock, exec_mock):
+        exec_mock.side_effect = putils.ProcessExecutionError
+        mpath_name = '3600d0230000000000e13955cc3757800'
+        name_mock.return_value = mpath_name
+        self.assertRaises(putils.ProcessExecutionError,
+                          self.linuxscsi.multipath_del_map, 'dm-7')
+
+        self.assertEqual(3, exec_mock.call_count)
+        exec_mock.assert_has_calls(
+            [mock.call('multipathd', 'del', 'map', mpath_name,
+                       run_as_root=True, timeout=5,
+                       root_helper=self.linuxscsi._root_helper)] * 3)
+
+        self.assertEqual(3, name_mock.call_count)
+        name_mock.assert_has_calls([mock.call('dm-7')] * 3)
+
+    @mock.patch.object(linuxscsi.LinuxSCSI, '_execute')
+    @mock.patch.object(linuxscsi.LinuxSCSI, 'get_dm_name')
+    def test_multipath_del_map_retries_remains(self, name_mock, exec_mock):
+        mpath_name = '3600d0230000000000e13955cc3757800'
+        name_mock.return_value = mpath_name
+        self.assertRaises(exception.BrickException,
+                          self.linuxscsi.multipath_del_map, 'dm-7')
+
+        self.assertEqual(3, exec_mock.call_count)
+        exec_mock.assert_has_calls(
+            [mock.call('multipathd', 'del', 'map', mpath_name,
+                       run_as_root=True, timeout=5,
+                       root_helper=self.linuxscsi._root_helper)] * 3)
+
+        self.assertEqual(6, name_mock.call_count)
+        name_mock.assert_has_calls([mock.call('dm-7')] * 6)
+
     @ddt.data({'con_props': {}, 'dev_info': {'path': mock.sentinel.path}},
               {'con_props': None, 'dev_info': {'path': mock.sentinel.path}},
               {'con_props': {'device_path': mock.sentinel.device_path},
