@@ -108,7 +108,13 @@ class LightOSConnector(base.BaseLinuxConnector):
         if not self.dsc_need_connect(connection_info):
             return
 
-        subsysnqn = connection_info['subsysnqn']
+        if 'subsysnqn' in connection_info:
+            subsysnqn = connection_info['subsysnqn']
+        elif 'nqn' in connection_info:
+            subsysnqn = connection_info['nqn']
+        else:
+            raise Exception("No nqn info found")
+
         uuid = connection_info['uuid']
         hostnqn = utils.get_host_nqn()
         with tempfile.NamedTemporaryFile(mode='w', delete=False) as dscfile:
